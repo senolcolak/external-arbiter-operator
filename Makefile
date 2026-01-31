@@ -81,6 +81,10 @@ deps:
 test: pretty env deps
 	go test ./...
 
+.PHONY: test-env
+test-env:
+	./hack/deploy-test-env.sh
+
 .PHONY: clean
 clean:
 	rm -rf build/

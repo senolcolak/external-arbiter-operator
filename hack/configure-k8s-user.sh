@@ -25,7 +25,20 @@ EOF
 echo "$csrResource" | kubectl apply -f -
 
 kubectl certificate approve external-arbiter-csr
-kubectl get csr external-arbiter-csr -o jsonpath='{.status.certificate}' | base64 --decode > external-arbiter.crt
+# Wait for certificate to be issued
+for i in {1..10}; do
+    kubectl get csr external-arbiter-csr -o jsonpath='{.status.certificate}' | base64 --decode > external-arbiter.crt
+    if [ -s external-arbiter.crt ]; then
+        break
+    fi
+    echo "Waiting for certificate to be issued..."
+    sleep 2
+done
+
+if [ ! -s external-arbiter.crt ]; then
+    echo "Failed to get issued certificate"
+    exit 1
+fi
 
 namespace=$(cat <<EOF
 ---
@@ -109,7 +122,8 @@ EOF
 echo "$roleBinding" | kubectl apply -f -
 
 kubectl get cm kube-root-ca.crt -o jsonpath="{['data']['ca\.crt']}" > k8s-ca.crt
-kubectl config set-cluster kubernetes --server=https://192.168.5.15:6443 --certificate-authority=k8s-ca.crt --embed-certs=true --kubeconfig=external-arbiter.kubeconfig
+server=$(kubectl config view --minify -o jsonpath='{.clusters[0].cluster.server}')
+kubectl config set-cluster kubernetes --server="${server}" --certificate-authority=k8s-ca.crt --embed-certs=true --kubeconfig=external-arbiter.kubeconfig
 kubectl config set-credentials external-arbiter --client-certificate=external-arbiter.crt --client-key=external-arbiter.key --embed-certs=true --kubeconfig=external-arbiter.kubeconfig
 kubectl config set-context external-arbiter@kubernetes --cluster=kubernetes --user=external-arbiter --kubeconfig=external-arbiter.kubeconfig
 kubectl config use-context external-arbiter@kubernetes --kubeconfig=external-arbiter.kubeconfig
@@ -127,3 +141,6 @@ data:
 EOF
 )
 echo "$secret" > ./contrib/k8s/examples/secret.yaml
+
+# Cleanup
+kubectl delete csr external-arbiter-csr
