@@ -14,6 +14,16 @@ external, not managed by rook, arbiter (monitor), that participates in consensus
 Operator also monitors remote cluster and checks whether cluster is available and tenant has enough
 permissions to handle arbiter deployment.
 
+## Architecture
+
+The primary resilience use case is a two-availability-zone Ceph control plane with **two Rook-managed monitors plus one external monitor** in an independent Kubernetes cluster. The external monitor provides the third quorum vote so the surviving Rook monitor and the external monitor can retain a 2-of-3 majority after losing either primary AZ.
+
+The external arbiter is a real `ceph-mon`, not a lightweight witness. It improves monitor/control-plane quorum resilience; it does not by itself provide OSD or application-data redundancy.
+
+![External Arbiter Operator conceptual architecture](docs/images/external-arbiter-operator-concept.webp)
+
+See [Architecture](docs/architecture.md) for the quorum model, controller/resource flow, topology assumptions, and the detailed diagram. See [Production readiness](docs/production-readiness.md) for the safety and operability work identified by the current architecture/code review.
+
 ## Requirements and Setup
 
 ### Required tools
@@ -137,7 +147,7 @@ If you find any bug that may be a security problem, please follow our instructio
 
 ## Code of Conduct
 
-We as members, contributors, and leaders pledge to make participation in our community a harassment-free experience for everyone. By participating in this project, you agree to abide by its [Code of Conduct](https://github.com/SAP/.github/blob/main/CODE_OF_CONDUCT.md) at all times.
+We as members, contributors, and leaders pledge to make participation in our community a harassment-free experience. By participating in this project, you agree to abide by its [Code of Conduct](https://github.com/SAP/.github/blob/main/CODE_OF_CONDUCT.md) at all times.
 
 ## Licensing
 
